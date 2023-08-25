@@ -1,0 +1,18 @@
+popmapfile: "data/popmap.txt"
+windowsize: 1000
+genomefile: "data/fakegenome.MALE.fa"
+samples_units_fqs_map: "data/samples_units_readfiles.txt"
+regions_for_plot_bed: "data/Ychrom.bed"
+
+# VCF_MISS: VCFTOOLS --max-missing argument. 1 = only fully present sites pass, 0.9 = at most 10% of samples are missing. Applied separately to M and F populations, not globally.
+VCF_MISS: 0.75
+VCF_QUAL: 20
+VCF_MIN_DEPTH: 6
+
+# freebayes shall skip regions of the genome with extremely high coverage
+# these aren't going to contain useful information but they can stall freebayes
+# set the threshold to 10 * N_samples * expected average coverage (= bases sequenced per sample / genomesize); e.g. 10*50*(20/0.444)
+freebayes_skip_cov: 22500
+
+# freebayes / bcftools jobs will be split to run on chunks of the data with equal size.
+varcall_chunksize: 1000000
