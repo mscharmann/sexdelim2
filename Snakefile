@@ -1044,8 +1044,8 @@ rule KMC_get_group_specifics:
 		print(N_males, N_females)
 		os.system("kmc_tools simple results_raw/group_male -ci"+ str( int(0.8*float(N_males))  ) + " results_raw/group_female -ci"+ str( int(0.2*float(N_females))  ) + " kmers_subtract results_raw/M_specific_kmer")
 		os.system("kmc_tools simple results_raw/group_female -ci"+ str( int(0.8*float(N_females))  ) + " results_raw/group_male -ci"+ str( int(0.2*float(N_males))  ) + " kmers_subtract results_raw/F_specific_kmer")
-		# remove inputs
-		os.system(" rm results_raw/group_male.kmc*  results_raw/group_female.kmc* ")
+		# DO NOT remove inputs
+		# os.system(" rm results_raw/group_male.kmc*  results_raw/group_female.kmc* ")
 
 rule count_kmer_group_level:
 	input:
@@ -1060,13 +1060,13 @@ rule count_kmer_group_level:
 		# count kmers that occur at least 1 times (-ci), and count them up to 1000 million (-cs)
 		cat {input.popmap} | awk '{{if($2==1) print "results_raw/"$1".kmc_dump.fa.gz"}}' >input_file_names.male_fastas
 		mkdir -p ./kmc_tempdir.male_fasta_counting
-		kmc -m5 -sm -k21 -fa -ci1 -cs1000 -t{threads} @input_file_names.male_fastas results_raw/group_male ./kmc_tempdir.male_fasta_counting
+		kmc -m10 -sm -k21 -fa -ci1 -cs1000 -t{threads} @input_file_names.male_fastas results_raw/group_male ./kmc_tempdir.male_fasta_counting
 		rm -r ./kmc_tempdir.male_fasta_counting
 		rm input_file_names.male_fastas
 
 		cat {input.popmap} | awk '{{if($2==2) print "results_raw/"$1".kmc_dump.fa.gz"}}' >input_file_names.female_fastas
 		mkdir -p ./kmc_tempdir.female_fasta_counting
-		kmc -m5 -sm -k21 -fa -ci1 -cs1000 -t{threads} @input_file_names.female_fastas results_raw/group_female ./kmc_tempdir.female_fasta_counting
+		kmc -m10 -sm -k21 -fa -ci1 -cs1000 -t{threads} @input_file_names.female_fastas results_raw/group_female ./kmc_tempdir.female_fasta_counting
 		rm -r ./kmc_tempdir.female_fasta_counting
 		rm input_file_names.female_fastas
 		"""
@@ -1083,7 +1083,7 @@ rule KMC_count_and_dump_to_fasta:
 		# count kmers that occur at least 2 times (-ci), and count them up to 2
 		echo {input} | tr " " "\n" >input_file_names.{wildcards.sample}
 		mkdir -p ./kmc_tempdir.{wildcards.sample}
-		kmc -m5 -sm -k21 -fq -ci2 -cs2 -t{threads} @input_file_names.{wildcards.sample} results_raw/kmer_{wildcards.sample} ./kmc_tempdir.{wildcards.sample}
+		kmc -m10 -sm -k21 -fq -ci2 -cs2 -t{threads} @input_file_names.{wildcards.sample} results_raw/kmer_{wildcards.sample} ./kmc_tempdir.{wildcards.sample}
 		kmc_tools transform results_raw/kmer_{wildcards.sample} dump /dev/stdout | awk '{{print ">mer\\n"$1}}' | pigz -p{threads} -c > {output}
 		rm input_file_names.{wildcards.sample}
 		rm -r ./kmc_tempdir.{wildcards.sample}
