@@ -86,7 +86,7 @@ def get_fastq(wildcards):
 
 
 SAMPLES = read_popmap(popmapfile)
-print (SAMPLES)
+#print (SAMPLES)
 
 
 rule all:
