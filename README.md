@@ -86,7 +86,7 @@ snakemake -j24 --keep-going --rerun-incomplete
 - results_processed are specific for the given windowsize. If a different windowsize is desired, intermediate results in the directory results_raw can be used to generate these relatively quickly, without going back to the read data and variant-calling. Just move the directory results_raw, change the windowsize in config.yaml, and start the pipeline again exactly as before. I usually do this several times for window sizes 1 kb, 10 kb, 25 kb, 50 kb, 100 kb.
 - If a different subset region for plotting is desired, there is no need to run the pipeline again, just subset the file calls/allstats.txt and call scripts/plot_allstats.R . For example, to plot only assembly sequences larger than 5 Gbp  
 ```
-seqtk comp data/genome_assembly.fa | awk '{{if($2>5000000) print $1"\t0\t"$2}}' > bigchroms.bed
+seqtk comp data/genome_assembly.fa | awk '{if($2>5000000) print $1"\t0\t"$2}' > bigchroms.bed
 
 bedtools intersect -wa -a calls/allstats.txt -b bigchroms.bed > subs.txt
 
