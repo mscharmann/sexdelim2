@@ -18,8 +18,6 @@ starting from a genome .fasta and fastq reads, generates 15 statistics in window
 
 - absolute sequence divergence (dxy) between males and females
 
-- average linkage disequilibrium (LD, r2) in the whole population of males and females
-
 - GWAS / count of significantly sex-associated variants
 
 - heterozygosity in males
