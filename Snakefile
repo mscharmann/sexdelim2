@@ -98,7 +98,6 @@ rule all:
 		"results_processed/M_F_norm_coverage_ratio_log2.bed.txt",
 		"results_processed/plink.assoc_results.significant.window.bed.txt",
 		"results_raw/plink.assoc_results.assoc.raw.txt.gz",
-		"results_processed/LD_r2_averaged_per_window.bed.txt",
 		"results_processed/kmers.F_specific.per_window.bed.txt",
 		"results_processed/kmers.M_specific.per_window.bed.txt",
 		"results_processed/gametolog_candidate_alleles.ZW_divergence.windows.bed.txt",
@@ -679,80 +678,6 @@ rule GWAS_plink_windows:
 		rm plink.assoc_results.raw.txt assoc.fdr.txt fdr10perc.txt plink.assoc_results.significant.bed genomefile.assoc.txt windows.assoc.bed
 		"""
 
-rule LD_plink_raw:
-	input:
-		gzvcf="results_raw/variant_sites.vcf.gz",
-		fa=genomefile
-	output:
-		"results_raw/ld_clean.sorted.bed.gz"
-#		"results_processed/LD_r2_averaged_per_window.bed.txt"
-	resources:
-		mem_mb=20000,
-		cpus=4
-	shell:
-		"""
-		# PLINK has a few problematic behaviours:
-		# - VCF gets converted to temporary plink format files with hard-coded names.. => RACE CONDITON when multiple instances of plink run
-		# - it will by default use ALL-1 CPUs => must use argument --threads
-		# - By default, PLINK 1.9 tries to reserve half of your system's RAM for its main workspace. => --memory <main workspace size, in MB>
-
-		DIR="tmpdir_plink_LD"
-		if [ -d "$DIR" ]; then
-		  rm -r $DIR
-		fi
-		mkdir -p tmpdir_plink_LD
-		cd tmpdir_plink_LD
-
-		# apply a MAF filter 0.2 before calculating LD as rare alleles imply very high LD by definition; they are thus useless for our purpose.
-		# also, thin variants to at least 1000 bp distance; (this in combination with ld-window 500 resulted in best "LD island" visibility in Leucadendron rubrum data)
-		vcftools --gzvcf ../{input.gzvcf} --thin 1000 --maf 0.2 --recode --stdout | bgzip -c > forplinkld.vcf.gz
-		# vcftools --gzvcf {input.gzvcf} --maf 0.1 --recode --stdout > forplinkld.vcf
-		# plink --vcf forplinkld.vcf --double-id --allow-extra-chr --r2 --ld-window-r2 0.0 --ld-window 5 --ld-window-kb 2
-		# rm forplinkld.vcf
-
-		plink --vcf forplinkld.vcf.gz --double-id --allow-extra-chr --maf 0.2 --r2 --ld-window-r2 0.0 --ld-window 500 --threads {resources.cpus} --memory {resources.mem_mb}
-
-		# --ld-window X	compute LD only for pairs that are at most X SNPs apart (default 10)
-		# --ld-window-kb X	compute LD only for pairs that are at most X kb apart (default 1000 kb)
-		# --ld-window-r2 X	minimum r2 to report, else omit from output. Default = 0.2
-
-		#cat plink.ld | tr -s ' ' '\\t' | cut -f1,2,4,5,7 | tail -n +2 | awk '{{ print $1"\\t"$2"\\t"$2"\\t"$5"\\n"$3"\\t"$4"\\t"$4"\\t"$5  }}' | sort --parallel {resources.cpus} -S 2G -T . -k1,1 -k2,2n | gzip -c > ../{output}
-		# interpolate the position of the LD value as the midpoint between the two variants from which it is calculated.
-		cat plink.ld | tr -s ' ' '\\t' | cut -f1,2,4,5,7 | awk '{{if($1==$3) print $1"\\t"int( ($2+$4)/2 )"\\t"int( ($2+$4)/2 )"\\t"$5 }}' > tmp_plink_before_sort
-		sort --parallel {resources.cpus} -S 2G -T . -k1,1 -k2,2n tmp_plink_before_sort | gzip -c > ../results_raw/ld_clean.sorted.bed.gz
-
-		cd ../
-		rm -r tmpdir_plink_LD
-		"""
-
-rule LD_plink_windows:
-	input:
-		ldraw="results_raw/ld_clean.sorted.bed.gz",
-		fa=genomefile
-	output:
-		"results_processed/LD_r2_averaged_per_window.bed.txt"
-	resources:
-		mem_mb=20000,
-		cpus=4
-	shell:
-		"""
-		# create windows, sort chroms lexicographically (same as the LD output)
-		seqtk comp {input.fa} | awk '{{print $1"\\t"$2}}' > genomefile.ld.txt
-		bedtools makewindows -w {windowsize} -g genomefile.ld.txt > tmpldwindows
-		sort --parallel {resources.cpus} -S 2G -T . -k1,1 -k2,2n tmpldwindows > windows.ld.bed
-		rm tmpldwindows
-
-		gunzip --stdout {input.ldraw} > ld_clean.sorted.bed
-
-		# get the mean LD per window
-		bedtools map -a windows.ld.bed -b ld_clean.sorted.bed -c 4 -o mean > tmpoutperwindow.txt
-
-		# sort chroms back to the same order as the genome file:
-		bedtools sort -g genomefile.ld.txt -i tmpoutperwindow.txt > {output}
-
-		rm ld_clean.sorted.bed genomefile.ld.txt tmpoutperwindow.txt windows.ld.bed
-		"""
-
 
 
 rule calc_indiv_het:
@@ -904,7 +829,6 @@ rule plot_all:
 		e="results_processed/M.pi.bed.txt",
 		f="results_processed/MvF.fst.bed.txt",
 		g="results_processed/MvF.dxy.bed.txt",
-		h="results_processed/LD_r2_averaged_per_window.bed.txt",
 		i="results_processed/plink.assoc_results.significant.window.bed.txt",
 		j="results_processed/gametolog_candidate_alleles.ZW_divergence.windows.bed.txt",
 		k="results_processed/gametolog_candidate_alleles.XY_divergence.windows.bed.txt",
@@ -920,7 +844,7 @@ rule plot_all:
 		"""
 		cat {input.a} > {output.stats}
 
-		for i in {input.b} {input.c} {input.d} {input.e} {input.f} {input.g} {input.h} {input.i} {input.j} {input.k} {input.l} {input.m} {input.n} {input.o} ; do
+		for i in {input.b} {input.c} {input.d} {input.e} {input.f} {input.g} {input.i} {input.j} {input.k} {input.l} {input.m} {input.n} {input.o} ; do
 			paste {output.stats} <(cut -f4 $i ) > tmpst
 			mv tmpst {output.stats}
 		done
